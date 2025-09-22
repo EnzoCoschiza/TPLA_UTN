@@ -3,16 +3,53 @@ import board
 import digitalio
 
 
+'''
+Componentes:
+    - Micrófono KY-038
+    - Motor paso a paso 28BYJ-48 con driver ULN2003
+    - LED azul
+    - Conversor de niveles (5V a 3.3V)
+    - Sensor infrarrojo KY-033
+    - LED RGB (agregado)
+'''
+
+class Microfono:
+    """Controla el micrófono KY-038"""
+    def __init__(self, pin : board.Pin):
+        self.pin = digitalio.DigitalInOut(pin)
+        self.pin.direction = digitalio.Direction.INPUT
+
+
 class MotorPasoPaso:
-    """Controla un motor paso a paso 28BYJ-48 usando un conversor de niveles"""
+    """Controla el motor paso a paso 28BYJ-48 usando un conversor de niveles"""
     pass
 
-class Led:
+
+class LedAzul:
     """Controla el LED"""
+    def __init__(self, pin : board.Pin):
+        self.pin = digitalio.DigitalInOut(pin)
+        self.pin.direction = digitalio.Direction.OUTPUT
+
+
+class SensorInfrarrojo:
+    """Controla el sensor infrarrojo KY-033"""
     pass
 
 
+class LedRGB:
+    """Controla el LED RGB"""
+    pass
 
+
+class EstacionDeControl:
+    """Clase principal que integra todos los componentes"""
+    def __init__(self):
+        self.microfono = Microfono()
+        self.motor = MotorPasoPaso()
+        self.led_azul = LedAzul()
+        self.sensor_infrarrojo = SensorInfrarrojo()
+        self.led_rgb = LedRGB()
 
 
 
