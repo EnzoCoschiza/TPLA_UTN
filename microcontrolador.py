@@ -1,6 +1,7 @@
 import time
 import board
 import digitalio
+import pwmio
 
 
 '''
@@ -20,6 +21,9 @@ class Microfono:
         self.pin = digitalio.DigitalInOut(pin)
         self.pin.direction = digitalio.Direction.INPUT
 
+    def escuchar(self) -> bool:
+        """Devuelve True si detecta sonido"""
+        return self.pin.value
 
 class MotorPasoPaso:
     """Controla el motor paso a paso 28BYJ-48 usando un conversor de niveles"""
@@ -43,10 +47,20 @@ class MotorPasoPaso:
             [0, 0, 0, 1],
             [1, 0, 0, 1]
         ]
-    def paso_motor(self, paso):
+    def _paso_motor(self, paso):
         """Escribe un paso en los pines"""
         for i in range(4):
             self.in_pins[i].value = bool(paso[i])
+
+    def mover_cinta_adelante(self):
+        for paso in self.secuencia:
+            self._paso_motor(paso)
+            time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
+    
+    def mover_cinta_atras(self):
+        for paso in reversed(self.secuencia):
+            self._paso_motor(paso)
+            time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
 
 class LedAzul:
     """Controla el LED"""
@@ -68,12 +82,26 @@ class SensorInfrarrojo:
         self.pin = digitalio.DigitalInOut(pin)
         self.pin.direction = digitalio.Direction.INPUT
 
+    def detectar(self) -> bool:
+        """Devuelve True si detecta un objeto"""
+        return not self.pin.value  # El sensor devuelve LOW cuando detecta un objeto
+
 
 class LedRGB:
     """Controla el LED RGB"""
     def __init__(self, r:board.Pin, g:board.Pin, b:board.Pin):
         """Inicializo los pines del RGB"""
-        pass
+        self.r = pwmio.PWMOut(r, frequency=5000, duty_cycle=0)
+        self.g = pwmio.PWMOut(g, frequency=5000, duty_cycle=0)
+        self.b = pwmio.PWMOut(b, frequency=5000, duty_cycle=0)
+
+    def set_color(self, r:int, g:int, b:int):
+        """Establece el color del LED RGB
+        r, g, b: valores entre 0 y 255
+        """
+        self.r.duty_cycle = int((r / 255) * 65535)
+        self.g.duty_cycle = int((g / 255) * 65535)
+        self.b.duty_cycle = int((b / 255) * 65535)
 
 
 class EstacionDeControl:
@@ -86,11 +114,9 @@ class EstacionDeControl:
         self.led_rgb = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
 
     def activar(self):
+        """bucle infinito con el programa principal"""
         while True:
-            self.led_azul.prender()
-            time.sleep(1)
-            self.led_azul.apagar()
-            time.sleep(1)
+            self.motor.mover_cinta_adelante()
 
 
 estacion_de_control = EstacionDeControl()
