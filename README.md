@@ -16,7 +16,6 @@ Este proyecto simula una estación de control de calidad en una línea de produc
   - LED azul (luz de inspección)
   - LED RGB (indicador de resultado)
 - **Botón**: Pulsador para rechazo de calidad
-- **Conversor de niveles**: 5V a 3.3V
 
 ## 🔌 Conexiones
 
@@ -75,7 +74,6 @@ ESPERA_OBJETO ←←←←←←←←←←←←←←←←←←←←←←
 TEPLA_UTN/
 ├── microcontrolador.py    # Implementación completa con máquina de estados
 ├── code.py               # Versión de desarrollo/pruebas
-├── guia.py              # Código de referencia
 └── README.md            # Este archivo
 ```
 
@@ -128,45 +126,6 @@ Ajusta la sensibilidad del micrófono modificando los delays en la clase `Microf
 ### Número de Pasos para Avance/Retroceso
 Modifica las variables `pasos_avance` y `pasos_retroceso` en `_decision_calidad()` y `_retroceso()`.
 
-## 🧪 Testing y Debugging
 
-Para probar componentes individuales, utiliza las clases de forma independiente:
-
-```python
-# Probar LED RGB
-led = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
-led.set_color(255, 0, 0)  # Rojo
-
-# Probar sensor infrarrojo
-sensor = SensorInfrarrojo(board.GP16)
-print(sensor.detectar())  # True si detecta objeto
-```
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👥 Autores
-
-- **EnzoCoschiza** - *Desarrollador principal* - [EnzoCoschiza](https://github.com/EnzoCoschiza)
-- **Proyecto TEPLA UTN** - *Tecnologías para la Automatización*
-
-## 🙏 Agradecimientos
-
-- Universidad Tecnológica Nacional (UTN)
-- Cátedra de Tecnologías para la Automatización
-- Comunidad CircuitPython
-
----
 
 *Desarrollado como parte del programa académico de Tecnologías para la Automatización - UTN*
