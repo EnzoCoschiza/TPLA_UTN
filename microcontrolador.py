@@ -9,9 +9,9 @@ Componentes:
     - Micrófono KY-038
     - Motor paso a paso 28BYJ-48 con driver ULN2003
     - LED azul
-    - Conversor de niveles (5V a 3.3V)
     - Sensor infrarrojo KY-033
     - LED RGB (agregado)
+    - Botón/pulsador (agregado)
 '''
 
 class Microfono:
@@ -52,15 +52,22 @@ class MotorPasoPaso:
         for i in range(4):
             self.in_pins[i].value = bool(paso[i])
 
-    def mover_cinta_adelante(self):
-        for paso in self.secuencia:
-            self._paso_motor(paso)
-            time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
-    
-    def mover_cinta_atras(self):
-        for paso in reversed(self.secuencia):
-            self._paso_motor(paso)
-            time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
+    def mover_cinta_adelante(self, pasos=1):
+        for _ in range(pasos):
+            for paso in self.secuencia:
+                self._paso_motor(paso)
+                time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
+
+    def mover_cinta_atras(self, pasos=1):
+        for _ in range(pasos):
+            for paso in reversed(self.secuencia):
+                self._paso_motor(paso)
+                time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
+
+    def detener(self):
+        """Detiene el motor apagando todas las bobinas"""
+        for pin in self.in_pins:
+            pin.value = False
 
 class LedAzul:
     """Controla el LED"""
@@ -103,6 +110,18 @@ class LedRGB:
         self.g.duty_cycle = int((g / 255) * 65535)
         self.b.duty_cycle = int((b / 255) * 65535)
 
+class Boton:
+    """Controla un botón"""
+    def __init__(self, pin:board.Pin):
+        """Inicializo el pin del botón"""
+        self.pin = digitalio.DigitalInOut(pin)
+        self.pin.direction = digitalio.Direction.INPUT
+        self.pin.pull = digitalio.Pull.UP  # Asumo que el botón conecta a GND cuando se presiona
+
+    def presionar(self) -> bool:
+        """Devuelve True si el botón está presionado"""
+        return not self.pin.value  # El botón devuelve LOW cuando está presionado
+
 
 class EstacionDeControl:
     """Clase principal que integra todos los componentes"""
@@ -112,50 +131,80 @@ class EstacionDeControl:
         self.led_azul = LedAzul(board.GP15)
         self.sensor_infrarrojo = SensorInfrarrojo(board.GP16)
         self.led_rgb = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
+        self.boton = Boton(board.GP14)
+
+        # Estados posibles
+        self.espera = 0
+        self.deteccion = 1
+        self.inspeccion = 2
+        self.decision_calidad = 3
+        self.estado_actual = self.espera
+
+    def _espera(self):
+        """Fase de espera: cinta en movimiento, leds apagados."""
+        # Cinta en movimiento
+        self.motor.mover_cinta_adelante()
+        self.led_azul.apagar()
+        self.led_rgb.set_color(0, 0, 0)
+
+        # Si detecta un objeto, pasa a la siguiente fase
+        if self.sensor_infrarrojo.detectar():
+            self.estado_actual = self.deteccion
+
+    def _deteccion(self):
+        """Fase de detección: el sensor infrarrojo detecta un objeto, se detiene la cinta, se prende el LED azul."""
+        # Detener cinta, prender LED azul (inspección)
+        self.led_azul.prender()
+        self.motor.detener()
+        
+        # Pasar a la fase de inspección
+        self.estado_actual = self.inspeccion
+        
+    def _inspeccion(self):
+        """Fase de fin de inspección"""
+
+        # Esperar a que se detecte sonido (ok) o se presione el botón (no ok)
+        if self.boton.presionar():
+            self._decision_calidad(ok=False)
+            # Vuelve a la fase de espera
+            self.estado_actual = self.espera
+        elif self.microfono.escuchar():
+            self._decision_calidad(ok=True)
+            # Vuelve a la fase de espera
+            self.estado_actual = self.espera
+
+    def _decision_calidad(self, ok):
+        """Fase de decisión de calidad"""
+        # Si está ok, debería prender verde y avanzar la cinta
+        if ok:
+            self.led_rgb.set_color(0, 255, 0)  # Verde
+            self.led_azul.apagar()
+            time.sleep(1)
+            self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
+            time.sleep(2)
+
+        # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
+        else:
+            self.led_rgb.set_color(255, 0, 0)  # Rojo
+            self.led_azul.apagar()
+            time.sleep(1)
+            self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
+            time.sleep(3)  # Espera 3 segundos para sacar la prenda
 
     def activar(self):
         """bucle infinito con el programa principal"""
         while True:
-            self.motor.mover_cinta_adelante()
+            if self.estado_actual == self.espera:
+                self._espera()
+            elif self.estado_actual == self.deteccion:
+                self._deteccion()
+            elif self.estado_actual == self.inspeccion:
+                self._inspeccion()
+            
+        
+
 
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
 
-
-
-'''
-# Pines conectados al conversor de niveles (lado LV)
-pins = [board.GP18, board.GP19, board.GP20, board.GP21]
-
-# Configurar pines como salida digital
-in_pins = []
-for p in pins:
-    pin = digitalio.DigitalInOut(p)
-    pin.direction = digitalio.Direction.OUTPUT
-    in_pins.append(pin)
-
-# Secuencia del motor (media fase / half-step)
-secuencia = [
-    [1, 0, 0, 0],
-    [1, 1, 0, 0],
-    [0, 1, 0, 0],
-    [0, 1, 1, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [0, 0, 0, 1],
-    [1, 0, 0, 1]
-]
-
-def paso_motor(paso):
-    """Escribe un paso en los pines"""
-    for i in range(4):
-        in_pins[i].value = bool(paso[i])
-
-# Prueba: hacer girar 1 vuelta completa
-# (28BYJ-48 suele necesitar 512 pasos por vuelta en half-step)
-while True:
-    for paso in secuencia:
-        paso_motor(paso)
-        time.sleep(0.002)  # Ajusta velocidad (más chico = más rápido)
-'''
