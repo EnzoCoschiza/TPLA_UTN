@@ -4,7 +4,7 @@ import digitalio
 import pwmio
 import json 
 
-#-----------Broker MQTT#-----------
+#-----------Broker MQTT-----------#
 import wifi
 import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
@@ -45,7 +45,7 @@ mqtt_client.connect()
 # Usamos estas varaibles globales para controlar cada cuanto publicamos
 LAST_PUB = 0
 PUB_INTERVAL = 5  
-def publish(calidad_buena: int, calidad_mala: int):
+def publish(calidad_buena: int, calidad_mala: int, total: int):
     global last_pub
     now = time.monotonic()
     
@@ -57,11 +57,13 @@ def publish(calidad_buena: int, calidad_mala: int):
             calidad_mala_topic = f"{TOPIC}/[Prendas de calidad mala]" 
             mqtt_client.publish(calidad_mala_topic, str([calidad_mala]))
             
+            total_topic = f"{TOPIC}/[Total de prendas inspeccionadas]" 
+            mqtt_client.publish(total_topic, str([total]))  
             last_pub = now
           
         except Exception as e:
             print(f"Error publicando MQTT: {e}")
-#-----------BrokerMQTT#-----------
+#-----------BrokerMQTT-----------#
 
 
 '''
@@ -246,7 +248,7 @@ class EstacionDeControl:
             time.sleep(1)
             self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
             time.sleep(2)
-
+        
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
             self.calidad_mala += 1
@@ -255,6 +257,8 @@ class EstacionDeControl:
             time.sleep(1)
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
+        
+        publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
             
     def activar(self):
         """bucle infinito con el programa principal"""
@@ -265,7 +269,6 @@ class EstacionDeControl:
                 self._deteccion()
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
-            
         
 
 
@@ -273,3 +276,4 @@ class EstacionDeControl:
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
 
+ #Llamada a la función publish para enviar los datos al broker MQTT
