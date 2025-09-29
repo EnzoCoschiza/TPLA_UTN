@@ -12,7 +12,7 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 SSID = "Tu wifi"
 PASSWORD = "Contraseña de tu wifi"
 BROKER = "La IPv4 de la pc donde corre mosquitto. Win: ipconfig o Linux: ip addr"  
-NOMBRE_EQUIPO = "Mason Mount "
+NOMBRE_EQUIPO = "Mason Mount"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
 
@@ -31,7 +31,7 @@ pool = socketpool.SocketPool(wifi.radio)
 
 def connect(client, userdata, flags, rc):
     print("Conectado al broker MQTT")
-    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["temperatura", "humedad"]}))
+    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["unidades ok", "unidades no ok", "total unidades"]}))
 
 mqtt_client = MQTT.MQTT(
     broker=BROKER,
@@ -275,5 +275,3 @@ class EstacionDeControl:
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
-
- #Llamada a la función publish para enviar los datos al broker MQTT
