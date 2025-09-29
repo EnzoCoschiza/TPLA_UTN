@@ -2,6 +2,66 @@ import time
 import board
 import digitalio
 import pwmio
+import json 
+
+#-----------Broker MQTT#-----------
+import wifi
+import socketpool
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
+# Configuración de RED
+SSID = "Tu wifi"
+PASSWORD = "Contraseña de tu wifi"
+BROKER = "La IPv4 de la pc donde corre mosquitto. Win: ipconfig o Linux: ip addr"  
+NOMBRE_EQUIPO = "Mason Mount "
+DESCOVERY_TOPIC = "descubrir"
+TOPIC = f"sensores/{NOMBRE_EQUIPO}"
+
+print(f"Intentando conectar a {SSID}...")
+try:
+    wifi.radio.connect(SSID, PASSWORD)
+    print(f"Conectado a {SSID}")
+    print(f"Dirección IP: {wifi.radio.ipv4_address}")
+except Exception as e:
+    print(f"Error al conectar a WiFi: {e}")
+    while True:
+        pass 
+
+# Configuración MQTT 
+pool = socketpool.SocketPool(wifi.radio)
+
+def connect(client, userdata, flags, rc):
+    print("Conectado al broker MQTT")
+    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["temperatura", "humedad"]}))
+
+mqtt_client = MQTT.MQTT(
+    broker=BROKER,
+    port=1883,
+    socket_pool=pool
+)
+
+mqtt_client.on_connect = connect
+mqtt_client.connect()
+
+# Usamos estas varaibles globales para controlar cada cuanto publicamos
+LAST_PUB = 0
+PUB_INTERVAL = 5  
+def publish(calidad_buena: int, calidad_mala: int):
+    global last_pub
+    now = time.monotonic()
+    
+    if now - last_pub >= PUB_INTERVAL:
+        try:
+            calidad_buena_topic = f"{TOPIC}/[Prendas de calidad buena]" 
+            mqtt_client.publish(calidad_buena_topic, str([calidad_buena]))
+            
+            calidad_mala_topic = f"{TOPIC}/[Prendas de calidad mala]" 
+            mqtt_client.publish(calidad_mala_topic, str([calidad_mala]))
+            
+            last_pub = now
+          
+        except Exception as e:
+            print(f"Error publicando MQTT: {e}")
+#-----------BrokerMQTT#-----------
 
 
 '''
@@ -133,11 +193,14 @@ class EstacionDeControl:
         self.led_rgb = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
         self.boton = Boton(board.GP14)
 
+        self.calidad_buena= 0
+        self.calidad_mala= 0
+        
         # Estados posibles
         self.espera = 0
         self.deteccion = 1
         self.inspeccion = 2
-        self.decision_calidad = 3
+    
         self.estado_actual = self.espera
 
     def _espera(self):
@@ -177,6 +240,7 @@ class EstacionDeControl:
         """Fase de decisión de calidad"""
         # Si está ok, debería prender verde y avanzar la cinta
         if ok:
+            self.calidad_buena += 1
             self.led_rgb.set_color(0, 255, 0)  # Verde
             self.led_azul.apagar()
             time.sleep(1)
@@ -185,12 +249,13 @@ class EstacionDeControl:
 
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
+            self.calidad_mala += 1
             self.led_rgb.set_color(255, 0, 0)  # Rojo
             self.led_azul.apagar()
             time.sleep(1)
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
-
+            
     def activar(self):
         """bucle infinito con el programa principal"""
         while True:
