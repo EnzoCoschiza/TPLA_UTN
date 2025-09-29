@@ -42,28 +42,21 @@ mqtt_client = MQTT.MQTT(
 
 mqtt_client.on_connect = connect
 mqtt_client.connect()
-
-# Usamos estas varaibles globales para controlar cada cuanto publicamos
-LAST_PUB = 0
-PUB_INTERVAL = 5  
+ 
 def publish(calidad_buena: int, calidad_mala: int, total: int):
-    global last_pub
-    now = time.monotonic()
-    
-    if now - last_pub >= PUB_INTERVAL:
-        try:
-            calidad_buena_topic = f"{TOPIC}/[Prendas de calidad buena]" 
-            mqtt_client.publish(calidad_buena_topic, str([calidad_buena]))
-            
-            calidad_mala_topic = f"{TOPIC}/[Prendas de calidad mala]" 
-            mqtt_client.publish(calidad_mala_topic, str([calidad_mala]))
-            
-            total_topic = f"{TOPIC}/[Total de prendas inspeccionadas]" 
-            mqtt_client.publish(total_topic, str([total]))  
-            last_pub = now
-          
-        except Exception as e:
-            print(f"Error publicando MQTT: {e}")
+
+    try:
+        calidad_buena_topic = f"{TOPIC}/[Prendas de calidad buena]" 
+        mqtt_client.publish(calidad_buena_topic, str([calidad_buena]))
+        
+        calidad_mala_topic = f"{TOPIC}/[Prendas de calidad mala]" 
+        mqtt_client.publish(calidad_mala_topic, str([calidad_mala]))
+        
+        total_topic = f"{TOPIC}/[Total de prendas inspeccionadas]" 
+        mqtt_client.publish(total_topic, str([total]))  
+      
+    except Exception as e:
+        print(f"Error publicando MQTT: {e}")
 #-----------BrokerMQTT-----------#
 
 
