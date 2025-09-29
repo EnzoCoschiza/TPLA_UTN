@@ -4,15 +4,16 @@ import digitalio
 import pwmio
 import json 
 
+
 #-----------Broker MQTT-----------#
 import wifi
 import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 # Configuración de RED
-SSID = "Tu wifi"
-PASSWORD = "Contraseña de tu wifi"
-BROKER = "La IPv4 de la pc donde corre mosquitto. Win: ipconfig o Linux: ip addr"  
-NOMBRE_EQUIPO = "Mason Mount"
+SSID = "wfrre-Docentes"
+PASSWORD = "20$tscFrre.24"
+BROKER = "10.13.100.154"
+NOMBRE_EQUIPO = "Mason_Mount"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
 
@@ -233,10 +234,10 @@ class EstacionDeControl:
             self._decision_calidad(ok=False)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
-        elif self.microfono.escuchar():
-            self._decision_calidad(ok=True)
-            # Vuelve a la fase de espera
-            self.estado_actual = self.espera
+        #elif self.microfono.escuchar():
+        #    self._decision_calidad(ok=True)
+        #    # Vuelve a la fase de espera
+        #    self.estado_actual = self.espera
 
     def _decision_calidad(self, ok):
         """Fase de decisión de calidad"""
