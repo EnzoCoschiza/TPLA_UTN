@@ -32,7 +32,7 @@ pool = socketpool.SocketPool(wifi.radio)
 
 def connect(client, userdata, flags, rc):
     print("Conectado al broker MQTT")
-    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["unidades_ok", "unidades_no_ok", "total_unidades"]}))
+    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["prendas"]}))
 
 mqtt_client = MQTT.MQTT(
     broker=BROKER,
@@ -46,14 +46,23 @@ mqtt_client.connect()
 def publish(calidad_buena: int, calidad_mala: int, total: int):
 
     try:
-        unidades_ok = f"{TOPIC}/unidades_ok" 
-        mqtt_client.publish(unidades_ok, str(calidad_buena))
+
+        payload = [
+            {"categoria": "unidades_ok", "valor": calidad_buena},
+            {"categoria": "unidades_no_ok", "valor": calidad_mala},
+            {"categoria": "total_unidades", "valor": total}
+        ]
+        prendas = f"{TOPIC}/prendas" 
+        mqtt_client.publish(prendas, json.dumps(payload))
+
+        # unidades_ok = f"{TOPIC}/unidades_ok" 
+        # mqtt_client.publish(unidades_ok, str(calidad_buena))
         
-        unidades_no_ok = f"{TOPIC}/unidades_no_ok" 
-        mqtt_client.publish(unidades_no_ok, str(calidad_mala))
+        # unidades_no_ok = f"{TOPIC}/unidades_no_ok" 
+        # mqtt_client.publish(unidades_no_ok, str(calidad_mala))
         
-        total_unidades = f"{TOPIC}/total_unidades" 
-        mqtt_client.publish(total_unidades, str(total))
+        # total_unidades = f"{TOPIC}/total_unidades" 
+        # mqtt_client.publish(total_unidades, str(total))
 
         print("Prueba")
       
