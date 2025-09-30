@@ -32,7 +32,7 @@ pool = socketpool.SocketPool(wifi.radio)
 
 def connect(client, userdata, flags, rc):
     print("Conectado al broker MQTT")
-    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["unidades ok", "unidades no ok", "total unidades"]}))
+    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["unidades_ok", "unidades_no_ok", "total_unidades"]}))
 
 mqtt_client = MQTT.MQTT(
     broker=BROKER,
@@ -46,14 +46,14 @@ mqtt_client.connect()
 def publish(calidad_buena: int, calidad_mala: int, total: int):
 
     try:
-        calidad_buena_topic = f"{TOPIC}/[Prendas de calidad buena]" 
-        mqtt_client.publish(calidad_buena_topic, str([calidad_buena]))
+        unidades_ok = f"{TOPIC}/unidades_ok" 
+        mqtt_client.publish(unidades_ok, str(calidad_buena))
         
-        calidad_mala_topic = f"{TOPIC}/[Prendas de calidad mala]" 
-        mqtt_client.publish(calidad_mala_topic, str([calidad_mala]))
+        unidades_no_ok = f"{TOPIC}/unidades_no_ok" 
+        mqtt_client.publish(unidades_no_ok, str(calidad_mala))
         
-        total_topic = f"{TOPIC}/[Total de prendas inspeccionadas]" 
-        mqtt_client.publish(total_topic, str([total]))  
+        total_unidades = f"{TOPIC}/total_unidades" 
+        mqtt_client.publish(total_unidades, str(total))
 
         print("Prueba")
       
@@ -256,6 +256,7 @@ class EstacionDeControl:
         
         mqtt_client.loop()
         publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
+        print(f"Estadísticas: Buenas={self.calidad_buena}, Malas={self.calidad_mala}, Total={self.calidad_buena+self.calidad_mala}")
             
     def activar(self):
         """bucle infinito con el programa principal"""
