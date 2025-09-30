@@ -54,6 +54,8 @@ def publish(calidad_buena: int, calidad_mala: int, total: int):
         
         total_topic = f"{TOPIC}/[Total de prendas inspeccionadas]" 
         mqtt_client.publish(total_topic, str([total]))  
+
+        print("Prueba")
       
     except Exception as e:
         print(f"Error publicando MQTT: {e}")
@@ -227,10 +229,10 @@ class EstacionDeControl:
             self._decision_calidad(ok=False)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
-        #elif self.microfono.escuchar():
-        #    self._decision_calidad(ok=True)
-        #    # Vuelve a la fase de espera
-        #    self.estado_actual = self.espera
+        elif self.microfono.escuchar():
+            self._decision_calidad(ok=True)
+            # Vuelve a la fase de espera
+            self.estado_actual = self.espera
 
     def _decision_calidad(self, ok):
         """Fase de decisión de calidad"""
@@ -252,6 +254,7 @@ class EstacionDeControl:
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
         
+        mqtt_client.loop()
         publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
             
     def activar(self):
@@ -263,9 +266,6 @@ class EstacionDeControl:
                 self._deteccion()
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
-        
-
-
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
