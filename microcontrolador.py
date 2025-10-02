@@ -4,7 +4,7 @@ import digitalio
 import pwmio
 import json 
 
-
+'''
 #-----------Broker MQTT-----------#
 import wifi
 import socketpool
@@ -69,16 +69,6 @@ def publish(calidad_buena: int, calidad_mala: int, total: int):
     except Exception as e:
         print(f"Error publicando MQTT: {e}")
 #-----------BrokerMQTT-----------#
-
-
-'''
-Componentes:
-    - Micrófono KY-038
-    - Motor paso a paso 28BYJ-48 con driver ULN2003
-    - LED azul
-    - Sensor infrarrojo KY-033
-    - LED RGB (agregado)
-    - Botón/pulsador (agregado)
 '''
 
 class Microfono:
@@ -252,7 +242,7 @@ class EstacionDeControl:
             self.led_azul.apagar()
             time.sleep(1)
             self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
-            time.sleep(2)
+            
         
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
@@ -263,9 +253,7 @@ class EstacionDeControl:
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
         
-        mqtt_client.loop()
-        publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
-        print(f"Estadísticas: Buenas={self.calidad_buena}, Malas={self.calidad_mala}, Total={self.calidad_buena+self.calidad_mala}")
+        # publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
             
     def activar(self):
         """bucle infinito con el programa principal"""
@@ -276,6 +264,9 @@ class EstacionDeControl:
                 self._deteccion()
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
+            
+
+
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
