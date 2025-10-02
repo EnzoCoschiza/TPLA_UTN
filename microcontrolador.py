@@ -2,16 +2,73 @@ import time
 import board
 import digitalio
 import pwmio
-
+import json 
 
 '''
-Componentes:
-    - Micrófono KY-038
-    - Motor paso a paso 28BYJ-48 con driver ULN2003
-    - LED azul
-    - Sensor infrarrojo KY-033
-    - LED RGB (agregado)
-    - Botón/pulsador (agregado)
+#-----------Broker MQTT-----------#
+import wifi
+import socketpool
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
+# Configuración de RED
+SSID = "wfrre-Docentes"
+PASSWORD = "20$tscFrre.24"
+BROKER = "10.13.100.154"
+NOMBRE_EQUIPO = "Mason_Mount"
+DESCOVERY_TOPIC = "descubrir"
+TOPIC = f"sensores/{NOMBRE_EQUIPO}"
+
+print(f"Intentando conectar a {SSID}...")
+try:
+    wifi.radio.connect(SSID, PASSWORD)
+    print(f"Conectado a {SSID}")
+    print(f"Dirección IP: {wifi.radio.ipv4_address}")
+except Exception as e:
+    print(f"Error al conectar a WiFi: {e}")
+    while True:
+        pass 
+
+# Configuración MQTT 
+pool = socketpool.SocketPool(wifi.radio)
+
+def connect(client, userdata, flags, rc):
+    print("Conectado al broker MQTT")
+    client.publish(DESCOVERY_TOPIC, json.dumps({"equipo":NOMBRE_EQUIPO,"magnitudes": ["prendas"]}))
+
+mqtt_client = MQTT.MQTT(
+    broker=BROKER,
+    port=1883,
+    socket_pool=pool
+)
+
+mqtt_client.on_connect = connect
+mqtt_client.connect()
+ 
+def publish(calidad_buena: int, calidad_mala: int, total: int):
+
+    try:
+
+        payload = [
+            {"categoria": "unidades_ok", "valor": calidad_buena},
+            {"categoria": "unidades_no_ok", "valor": calidad_mala},
+            {"categoria": "total_unidades", "valor": total}
+        ]
+        prendas = f"{TOPIC}/prendas" 
+        mqtt_client.publish(prendas, json.dumps(payload))
+
+        # unidades_ok = f"{TOPIC}/unidades_ok" 
+        # mqtt_client.publish(unidades_ok, str(calidad_buena))
+        
+        # unidades_no_ok = f"{TOPIC}/unidades_no_ok" 
+        # mqtt_client.publish(unidades_no_ok, str(calidad_mala))
+        
+        # total_unidades = f"{TOPIC}/total_unidades" 
+        # mqtt_client.publish(total_unidades, str(total))
+
+        print("Prueba")
+      
+    except Exception as e:
+        print(f"Error publicando MQTT: {e}")
+#-----------BrokerMQTT-----------#
 '''
 
 class Microfono:
@@ -133,11 +190,14 @@ class EstacionDeControl:
         self.led_rgb = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
         self.boton = Boton(board.GP14)
 
+        self.calidad_buena= 0
+        self.calidad_mala= 0
+        
         # Estados posibles
         self.espera = 0
         self.deteccion = 1
         self.inspeccion = 2
-        self.decision_calidad = 3
+    
         self.estado_actual = self.espera
 
     def _espera(self):
@@ -177,20 +237,24 @@ class EstacionDeControl:
         """Fase de decisión de calidad"""
         # Si está ok, debería prender verde y avanzar la cinta
         if ok:
+            self.calidad_buena += 1
             self.led_rgb.set_color(0, 255, 0)  # Verde
             self.led_azul.apagar()
             time.sleep(1)
             self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
-            time.sleep(2)
-
+            
+        
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
+            self.calidad_mala += 1
             self.led_rgb.set_color(255, 0, 0)  # Rojo
             self.led_azul.apagar()
             time.sleep(1)
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
-
+        
+        # publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
+            
     def activar(self):
         """bucle infinito con el programa principal"""
         while True:
@@ -201,10 +265,8 @@ class EstacionDeControl:
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
             
-        
 
 
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
-
