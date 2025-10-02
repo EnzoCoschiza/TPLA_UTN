@@ -16,6 +16,7 @@ Este proyecto simula una estación de control de calidad en una línea de produc
   - LED azul (luz de inspección)
   - LED RGB (indicador de resultado)
 - **Botón**: Pulsador para rechazo de calidad
+- **Batería de 9 V**: Fuente de alimentación externa para el motor
 
 ## 🔌 Conexiones
 
@@ -27,6 +28,7 @@ Este proyecto simula una estación de control de calidad en una línea de produc
 | Sensor Infrarrojo | GP16 | Detección de presencia de objeto |
 | LED RGB (R,G,B) | GP10,GP11,GP12 | Indicador de resultado de calidad |
 | Botón | GP14 | Señal de rechazo de calidad |
+| Batería 9 V | COM ULN2003 + VCC motor | Alimentación del motor paso a paso |
 
 ## 🎯 Fases de Funcionamiento
 
@@ -68,11 +70,27 @@ ESPERA_OBJETO → DETECCION_PRENDA → FIN_INSPECCION → DECISION_CALIDAD
 ESPERA_OBJETO ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←← RETROCESO (si calidad No OK)
 ```
 
+## 📊 Estadísticas de Producción
+
+El sistema contabiliza automáticamente:
+- ✅ Prendas aprobadas (calidad_buena)
+- ❌ Prendas rechazadas (calidad_mala)
+- 📦 Total de prendas inspeccionadas
+Estos valores se muestran en la consola serial y también pueden enviarse vía **MQTT** a un broker remoto.
+
+## 🌐 Integración con MQTT
+
+Además del control local, el sistema cuenta con un módulo de red implementado en broker.py, que permite:
+- Conexión a una red WiFi.
+- Publicación periódica de estadísticas en un broker MQTT.
+- Descubrimiento automático del dispositivo en la red.
+
 ## 📁 Estructura del Proyecto
 
 ```
 TEPLA_UTN/
 ├── microcontrolador.py    # Implementación completa con máquina de estados
+├── broker.py              # Cliente MQTT para reporte de estadísticas
 ├── code.py               # Versión de desarrollo/pruebas
 └── README.md            # Este archivo
 ```
@@ -127,5 +145,12 @@ Ajusta la sensibilidad del micrófono modificando los delays en la clase `Microf
 Modifica las variables `pasos_avance` y `pasos_retroceso` en `_decision_calidad()` y `_retroceso()`.
 
 
-
 *Desarrollado como parte del programa académico de Tecnologías para la Automatización - UTN*
+
+## 👥 Integrantes del Grupo
+
+- Fidanza, Felipe
+- Rodríguez Scornik, Matías
+- Coschiza, Enzo
+- Jerez, Fabricio
+- Suarez, Tomás
