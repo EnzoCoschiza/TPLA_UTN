@@ -68,7 +68,7 @@ def publish(tipo: str, calidad: int):
 #-----------BrokerMQTT-----------#
 '''
 
-#---------------------Funcion para limpiar pantalla----------------------#
+#---------------------Funciones para monitoreo por pantalla----------------------#
 def limpiar_pantalla():
     """Limpia la pantalla usando secuencias de escape ANSI"""
     print('\033[2J\033[H', end='')
@@ -93,6 +93,7 @@ class Microfono:
     def escuchar(self) -> bool:
         """Devuelve True si detecta sonido"""
         return self.pin.value
+
 
 class MotorPasoPaso:
     """Controla el motor paso a paso 28BYJ-48 usando un conversor de niveles"""
@@ -138,6 +139,7 @@ class MotorPasoPaso:
         for pin in self.in_pins:
             pin.value = False
 
+
 class LedAzul:
     """Controla el LED"""
     def __init__(self, pin:board.Pin):
@@ -150,6 +152,7 @@ class LedAzul:
 
     def apagar(self):
         self.pin.value = False
+
 
 class SensorInfrarrojo:
     """Controla el sensor infrarrojo KY-033"""
@@ -179,6 +182,7 @@ class LedRGB:
         self.g.duty_cycle = int((g / 255) * 65535)
         self.b.duty_cycle = int((b / 255) * 65535)
 
+
 class Boton:
     """Controla un botón"""
     def __init__(self, pin:board.Pin):
@@ -195,6 +199,7 @@ class Boton:
 class EstacionDeControl:
     """Clase principal que integra todos los componentes"""
     def __init__(self):
+        # Variables de los componentes
         self.microfono = Microfono(board.GP13)
         self.motor = MotorPasoPaso(pins=[board.GP18, board.GP19, board.GP20, board.GP21])
         self.led_azul = LedAzul(board.GP15)
@@ -202,15 +207,20 @@ class EstacionDeControl:
         self.led_rgb = LedRGB(r=board.GP10, g=board.GP11, b=board.GP12)
         self.boton = Boton(board.GP14)
 
+        # Variables de control
         self.calidad_buena= 0
         self.calidad_mala= 0
         
-        # Estados posibles
+        # Variables de estado
         self.espera = 'espera'
         self.deteccion = 'deteccion'
         self.inspeccion = 'inspeccion'
-
+        self.salvaguarda_motor = 'salvaguarda del motor'
         self.estado_actual = self.espera
+
+        # Variables de tiempo
+        self.tiempo_inicio = time.monotonic()
+        self.tiempo_actual = 0
 
     def _espera(self):
         """Fase de espera: cinta en movimiento, leds apagados."""
@@ -243,11 +253,13 @@ class EstacionDeControl:
             self._decision_calidad(ok=False)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
+            self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador al volver a la espera
             imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
         elif self.microfono.escuchar():
             self._decision_calidad(ok=True)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
+            self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador al volver a la espera
             imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
 
     def _decision_calidad(self, ok):
@@ -273,18 +285,37 @@ class EstacionDeControl:
 
             #publish(tipo="mala", calidad=self.calidad_mala)  #Llamada a la función publish para enviar los datos al broker MQTT
             
+    def _salvaguarda_motor(self):
+        """Fase de alerta por motor demasiado tiempo activo"""
+        self.motor.detener()
+        self.tiempo_actual = time.monotonic() - self.tiempo_inicio
+        if self.tiempo_actual > 10: # 1 minuto de inactividad
+            self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
+            self.estado_actual = self.espera
+            imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
+
     def activar(self):
         """bucle infinito con el programa principal"""
 
         imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
         while True:
+            #---------------------Programa principal---------------------#
             if self.estado_actual == self.espera:
                 self._espera()
             elif self.estado_actual == self.deteccion:
                 self._deteccion()
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
+            elif self.estado_actual == self.salvaguarda_motor:
+                self._salvaguarda_motor()
             
+            #---------------------Control de tiempo de motor activo---------------------#
+            self.tiempo_actual = time.monotonic() - self.tiempo_inicio
+            if (self.tiempo_actual > 20) and (self.estado_actual == self.espera):  # Si el motor está activo por más de 5 minutos
+                self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
+                self.estado_actual = self.salvaguarda_motor
+                imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
+                self._salvaguarda_motor()
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
