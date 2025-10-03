@@ -290,7 +290,7 @@ class EstacionDeControl:
         self.motor.detener()
         self.tiempo_actual = time.monotonic() - self.tiempo_inicio
 
-        if self.tiempo_actual > 10: # 1 minuto de inactividad
+        if self.tiempo_actual > 60: # 1 minuto de inactividad
             self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
             self.estado_actual = self.espera
             imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
@@ -319,7 +319,7 @@ class EstacionDeControl:
             
             #---------------------Control de tiempo de motor activo---------------------#
             self.tiempo_actual = time.monotonic() - self.tiempo_inicio
-            if (self.tiempo_actual > 20) and (self.estado_actual == self.espera):  # Si el motor está activo por más de 5 minutos
+            if (self.tiempo_actual > 60) and (self.estado_actual == self.espera):  # Si el motor está activo por más de 1 minuto sin recibir interacción
                 self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
                 self.estado_actual = self.salvaguarda_motor
                 imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
