@@ -4,6 +4,7 @@ import digitalio
 import pwmio
 import json 
 
+
 '''
 #-----------Broker MQTT-----------#
 import wifi
@@ -12,7 +13,7 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 # Configuración de RED
 SSID = "wfrre-Docentes"
 PASSWORD = "20$tscFrre.24"
-BROKER = "10.13.100.154"
+BROKER = "10.13.100.84"
 NOMBRE_EQUIPO = "Mason_Mount"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
@@ -43,15 +44,12 @@ mqtt_client = MQTT.MQTT(
 mqtt_client.on_connect = connect
 mqtt_client.connect()
  
-def publish(calidad_buena: int, calidad_mala: int, total: int):
-
+def publish(tipo: str, calidad: int):
+    """Publica los datos en el broker MQTT"""
     try:
 
-        payload = [
-            {"categoria": "unidades_ok", "valor": calidad_buena},
-            {"categoria": "unidades_no_ok", "valor": calidad_mala},
-            {"categoria": "total_unidades", "valor": total}
-        ]
+        payload = {tipo : calidad}
+        
         prendas = f"{TOPIC}/prendas" 
         mqtt_client.publish(prendas, json.dumps(payload))
 
@@ -64,13 +62,27 @@ def publish(calidad_buena: int, calidad_mala: int, total: int):
         # total_unidades = f"{TOPIC}/total_unidades" 
         # mqtt_client.publish(total_unidades, str(total))
 
-        print("Prueba")
       
     except Exception as e:
         print(f"Error publicando MQTT: {e}")
 #-----------BrokerMQTT-----------#
 '''
 
+#---------------------Funcion para limpiar pantalla----------------------#
+def limpiar_pantalla():
+    """Limpia la pantalla usando secuencias de escape ANSI"""
+    print('\033[2J\033[H', end='')
+
+def imprimir_resultados(estado_actual:str, calidad_buena:int, calidad_mala:int):
+    limpiar_pantalla()
+    print('---------------------Monitoreo de calidad---------------------')
+    print('Fase actual:', estado_actual)
+    print('Prendas OK:', calidad_buena)
+    print('Prendas NO OK:', calidad_mala)
+    print('Total:', calidad_buena + calidad_mala)
+
+
+#---------------------Clases de componentes----------------------#   
 class Microfono:
     """Controla el micrófono KY-038"""
     def __init__(self, pin:board.Pin):
@@ -194,10 +206,10 @@ class EstacionDeControl:
         self.calidad_mala= 0
         
         # Estados posibles
-        self.espera = 0
-        self.deteccion = 1
-        self.inspeccion = 2
-    
+        self.espera = 'espera'
+        self.deteccion = 'deteccion'
+        self.inspeccion = 'inspeccion'
+
         self.estado_actual = self.espera
 
     def _espera(self):
@@ -210,16 +222,19 @@ class EstacionDeControl:
         # Si detecta un objeto, pasa a la siguiente fase
         if self.sensor_infrarrojo.detectar():
             self.estado_actual = self.deteccion
+            imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
 
     def _deteccion(self):
         """Fase de detección: el sensor infrarrojo detecta un objeto, se detiene la cinta, se prende el LED azul."""
         # Detener cinta, prender LED azul (inspección)
         self.led_azul.prender()
         self.motor.detener()
-        
+        time.sleep(1)
+
         # Pasar a la fase de inspección
         self.estado_actual = self.inspeccion
-        
+        imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
+
     def _inspeccion(self):
         """Fase de fin de inspección"""
 
@@ -228,10 +243,12 @@ class EstacionDeControl:
             self._decision_calidad(ok=False)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
+            imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
         elif self.microfono.escuchar():
             self._decision_calidad(ok=True)
             # Vuelve a la fase de espera
             self.estado_actual = self.espera
+            imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
 
     def _decision_calidad(self, ok):
         """Fase de decisión de calidad"""
@@ -242,8 +259,9 @@ class EstacionDeControl:
             self.led_azul.apagar()
             time.sleep(1)
             self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
-            
-        
+
+            #publish(tipo="buena", calidad=self.calidad_buena)  #Llamada a la función publish para enviar los datos al broker MQTT
+
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
             self.calidad_mala += 1
@@ -252,11 +270,13 @@ class EstacionDeControl:
             time.sleep(1)
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
-        
-        # publish(calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala, total=self.calidad_buena+self.calidad_mala )  #Llamada a la función publish para enviar los datos al broker MQTT
+
+            #publish(tipo="mala", calidad=self.calidad_mala)  #Llamada a la función publish para enviar los datos al broker MQTT
             
     def activar(self):
         """bucle infinito con el programa principal"""
+
+        imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
         while True:
             if self.estado_actual == self.espera:
                 self._espera()
@@ -265,8 +285,6 @@ class EstacionDeControl:
             elif self.estado_actual == self.inspeccion:
                 self._inspeccion()
             
-
-
 
 estacion_de_control = EstacionDeControl()
 estacion_de_control.activar()
