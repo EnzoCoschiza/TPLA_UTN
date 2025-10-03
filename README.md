@@ -30,6 +30,8 @@ Este proyecto simula una estación de control de calidad en una línea de produc
 | Botón | GP14 | Señal de rechazo de calidad |
 | Batería 9 V | COM ULN2003 + VCC motor | Alimentación del motor paso a paso |
 
+<img width="951" height="478" alt="image" src="https://github.com/user-attachments/assets/20ead93b-3538-4e61-b4b2-702cd1835111" />
+
 ## 🎯 Fases de Funcionamiento
 
 ### 1️⃣ **Espera del Objeto**
@@ -60,15 +62,26 @@ El operario tiene dos opciones:
 - ⬅️ Motor retrocede enviando la prenda a reproceso
 - 🔄 Retorna automáticamente al estado de espera
 
+### 5️⃣ **Salvaguarda del Motor** ⚠️
+- 🛡️ **Protección automática**: Si el motor funciona 60s sin detectar prendas
+- ⏸️ **Pausa del sistema** con mensaje de alerta
+- 🎮 **Opción de continuar**: El operario puede reanudar (opción 1) o detener (opción 2)
+- 🔄 **Reinicio automático** del temporizador al reanudar
+
 ## 🏗️ Arquitectura del Sistema
 
 El sistema utiliza una **máquina de estados** con los siguientes estados:
 
 ```
-ESPERA_OBJETO → DETECCION_PRENDA → FIN_INSPECCION → DECISION_CALIDAD
-                                                            ↓
-ESPERA_OBJETO ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←← RETROCESO (si calidad No OK)
+ESPERA → DETECCION → INSPECCION → DECISION_CALIDAD
+   ↑                                        ↓
+   ←←←←←←←←← SALVAGUARDA_MOTOR ←←←←←←←←←←←←←←←
 ```
+### **Estados del Sistema:**
+- `0` - **Espera**: Cinta en movimiento, buscando objetos
+- `1` - **Detección**: Objeto detectado, motor detenido
+- `2` - **Inspección**: Esperando decisión del operario
+- `3` - **Salvaguarda**: Protección por inactividad prolongada
 
 ## 📊 Estadísticas de Producción
 
@@ -92,7 +105,22 @@ TEPLA_UTN/
 ├── microcontrolador.py    # Implementación completa con máquina de estados
 ├── broker.py              # Cliente MQTT para reporte de estadísticas
 ├── code.py               # Versión de desarrollo/pruebas
-└── README.md            # Este archivo
+├── README.md            # Este archivo
+└── lib/                     # Librerías de CircuitPython
+    ├── adafruit_minimqtt/   # Para futuras implementaciones MQTT
+    ├── adafruit_connection_manager.mpy
+    └── adafruit_esp32spi_socketpool.mpy
+```
+
+## 🖥️ **Interfaz de Monitoreo en Tiempo Real**
+
+El sistema muestra continuamente:
+```
+---------------------Monitoreo de calidad---------------------
+Fase actual: espera
+Prendas OK: 15
+Prendas NO OK: 3
+Total: 18
 ```
 
 ## 🚀 Instalación y Uso
@@ -109,10 +137,12 @@ TEPLA_UTN/
 
 2. Copia `microcontrolador.py` a tu Raspberry Pi Pico como `code.py`
 
-3. Reinicia el Pico para ejecutar el programa
+3. Asegúrate de tener las librerías necesarias en la carpeta `lib/`
+
+4. Reinicia el Pico para ejecutar el programa
 
 ### Uso
-1. El sistema iniciará automáticamente en modo **ESPERA_OBJETO**
+1. El sistema iniciará automáticamente mostrando la interfaz de monitoreo
 2. Coloca una prenda en la cinta transportadora
 3. Cuando el sensor detecte la prenda, el sistema se detendrá
 4. Realiza la inspección visual de calidad
@@ -120,6 +150,7 @@ TEPLA_UTN/
    - **Chasquido** para aprobar
    - **Botón** para rechazar
 6. El sistema procesará automáticamente la decisión
+7. **Salvaguarda automática**: Si no hay actividad por 60s, el sistema se pausará
 
 ## 🔍 Monitoreo del Sistema
 
@@ -132,14 +163,17 @@ El sistema incluye mensajes informativos en la consola:
 
 ## ⚙️ Personalización
 
+### Ajuste del Tiempo de Salvaguarda
+Modifica la línea en el método `activar()`:
+```python
+if (self.tiempo_actual > 60):  # Cambiar 60 por los segundos deseados
+```
+
 ### Ajuste de Velocidad del Motor
 Modifica el valor `time.sleep()` en los métodos del motor:
 ```python
 time.sleep(0.002)  # Menor valor = mayor velocidad
 ```
-
-### Tiempo de Detección de Sonido
-Ajusta la sensibilidad del micrófono modificando los delays en la clase `Microfono`.
 
 ### Número de Pasos para Avance/Retroceso
 Modifica las variables `pasos_avance` y `pasos_retroceso` en `_decision_calidad()` y `_retroceso()`.
