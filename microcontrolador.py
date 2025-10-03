@@ -3,7 +3,7 @@ import board
 import digitalio
 import pwmio
 import json 
-
+import supervisor
 
 '''
 #-----------Broker MQTT-----------#
@@ -289,10 +289,18 @@ class EstacionDeControl:
         """Fase de alerta por motor demasiado tiempo activo"""
         self.motor.detener()
         self.tiempo_actual = time.monotonic() - self.tiempo_inicio
+
         if self.tiempo_actual > 10: # 1 minuto de inactividad
             self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
             self.estado_actual = self.espera
             imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
+        
+        if supervisor.runtime.serial_bytes_available:
+            entrada = input().strip().upper()
+            if entrada == "1":
+                self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
+                self.estado_actual = self.espera
+                imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
 
     def activar(self):
         """bucle infinito con el programa principal"""
@@ -315,6 +323,9 @@ class EstacionDeControl:
                 self.tiempo_inicio = time.monotonic()  # Reinicia el temporizador
                 self.estado_actual = self.salvaguarda_motor
                 imprimir_resultados(estado_actual=self.estado_actual, calidad_buena=self.calidad_buena, calidad_mala=self.calidad_mala)
+                print("---------------------¡ Alerta !---------------------")
+                print("Motor detenido por inactividad.")
+                print("\n¿Desea continuar de todas formas? (1-Sí / 2-No)")
                 self._salvaguarda_motor()
 
 estacion_de_control = EstacionDeControl()
