@@ -44,14 +44,16 @@ mqtt_client = MQTT.MQTT(
 mqtt_client.on_connect = connect
 mqtt_client.connect()
  
-def publish(tipo: str, calidad: int):
+def publish(calidad_buena: int, calidad_mala: int):
     """Publica los datos en el broker MQTT"""
+    
     try:
-
-        payload = {tipo : calidad}
+        payload = [{"label": "Bueno", "value": calidad_buena},
+            {"label": "Malo", "value": calidad_mala},
+            {"label": "Total", "value": calidad_buena + calidad_mala}]
         
-        prendas = f"{TOPIC}/prendas" 
-        mqtt_client.publish(prendas, json.dumps(payload))
+        prendas_topic = f"{TOPIC}/prendas"
+        mqtt_client.publish(prendas_topic,  json.dumps(payload)) 
 
         # unidades_ok = f"{TOPIC}/unidades_ok" 
         # mqtt_client.publish(unidades_ok, str(calidad_buena))
@@ -272,8 +274,6 @@ class EstacionDeControl:
             time.sleep(1)
             self.motor.mover_cinta_adelante(pasos=200)  # Avanza 200 pasos para no interferir con el sensor
 
-            publish(tipo="buena", calidad=self.calidad_buena)  #Llamada a la función publish para enviar los datos al broker MQTT
-
         # Si no está ok, debería prender rojo, retroceder la cinta para sacar la prenda y luego avanzar nuevamente
         else:
             self.calidad_mala += 1
@@ -283,7 +283,7 @@ class EstacionDeControl:
             self.motor.mover_cinta_atras(pasos=300)  # Retrocede 300 pasos
             time.sleep(3)  # Espera 3 segundos para sacar la prenda
 
-            publish(tipo="mala", calidad=self.calidad_mala)  #Llamada a la función publish para enviar los datos al broker MQTT
+        publish(calidad_buena =self.calidad_buena, calidad_mala=self.calidad_mala)  #Llamada a la función publish para enviar los datos al broker MQTT
             
     def _salvaguarda_motor(self):
         """Fase de alerta por motor demasiado tiempo activo"""
