@@ -11,9 +11,9 @@ import wifi
 import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 # Configuración de RED
-SSID = "wfrre-Docentes"
-PASSWORD = "20$tscFrre.24"
-BROKER = "10.13.100.84"
+SSID = ""
+PASSWORD = ""
+BROKER = ""
 NOMBRE_EQUIPO = "Mason_Mount"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
@@ -54,16 +54,6 @@ def publish(calidad_buena: int, calidad_mala: int):
         
         prendas_topic = f"{TOPIC}/prendas"
         mqtt_client.publish(prendas_topic,  json.dumps(payload)) 
-
-        # unidades_ok = f"{TOPIC}/unidades_ok" 
-        # mqtt_client.publish(unidades_ok, str(calidad_buena))
-        
-        # unidades_no_ok = f"{TOPIC}/unidades_no_ok" 
-        # mqtt_client.publish(unidades_no_ok, str(calidad_mala))
-        
-        # total_unidades = f"{TOPIC}/total_unidades" 
-        # mqtt_client.publish(total_unidades, str(total))
-
       
     except Exception as e:
         print(f"Error publicando MQTT: {e}")
